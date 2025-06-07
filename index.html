@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Video Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      height: 100%;
+      overflow: hidden;
+    }
+    
+    .wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 1;
+    }
+    
+    /* Zajistit viditelnost ovládacích prvků */
+    video::-webkit-media-controls {
+      display: flex !important;
+      opacity: 1 !important;
+      z-index: 10 !important;
+    }
+    
+    /* Odstranit překrývající vrstvu, která brání interakci */
+    .video-controls-target {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <video autoplay muted playsinline controls loop id="mainVideo">
+      <source src="videoAI1.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+  </div>
+  
+  <script>
+    // Inicializace video přehrávače
+    const video = document.getElementById('mainVideo');
+    
+    // Umožnit kliknutí na video pro přehrání/zastavení
+    video.addEventListener('click', function(e) {
+      // Pouze pokud není kliknuto na ovládací prvky
+      if (e.target === video) {
+        if (video.paused) {
+          video.play();
+        } else {
+          video.pause();
+        }
+      }
+    });
+    
+    // Nastavit komunikaci s rodičovským oknem
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'parentCommand') {
+        if (event.data.action === 'play') {
+          video.play();
+        } else if (event.data.action === 'pause') {
+          video.pause();
+        } else if (event.data.action === 'toggleMute') {
+          video.muted = !video.muted;
+        }
+      }
+    });
+    
+    // Informovat rodiče, že iframe je připraven
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'videoFrameReady',
+        frameId: window.location.pathname.split('/').pop()
+      }, '*');
+    }
+    
+    // Propagovat události o stavu videa do rodiče
+    video.addEventListener('play', reportVideoState);
+    video.addEventListener('pause', reportVideoState);
+    video.addEventListener('volumechange', reportVideoState);
+    
+    function reportVideoState() {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'videoStateUpdate',
+          frameId: window.location.pathname.split('/').pop(),
+          isPaused: video.paused,
+          isMuted: video.muted,
+          volume: video.volume
+        }, '*');
+      }
+    }
+  </script>
+</body>
+</html>
